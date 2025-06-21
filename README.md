@@ -143,3 +143,10 @@ kubectl -n observability get all -l app=otel-collector-gateway
 | **Jaeger**             | [http://localhost:16686](http://localhost:16686) |
 | **Prometheus**         | [http://localhost:9090](http://localhost:9090)   |
 | **Loki (via Grafana)** | Integrated                                       |
+
+---
+## 📖 Learn More
+
+This repository is based on the article series:  
+**“The Observability Blueprint: Instrument, Deploy, Observe — OpenTelemetry in Action on Kubernetes”**  
+[Read the full blog series here](https://github.com/Kartikdudeja/blogs/tree/main/otel-k8s-article-series)
