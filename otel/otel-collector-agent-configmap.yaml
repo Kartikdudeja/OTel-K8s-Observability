@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-agent-config
+  namespace: observability
+data:
+  otel-collector-config.yaml: |
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317  # receive traces and metrics from instrumented application
+
+      hostmetrics:
+        collection_interval: 1m
+        scrapers:
+          cpu: {}
+          memory: {}
+          disk: {}
+          load: {}
+          filesystem: {}
+          network: {}
+          system: {}
+
+      filelog:
+        include: [ /var/log/pods/*/*/*.log ]
+        start_at: beginning
+        include_file_path: true
+        include_file_name: true
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 15
+      
+      batch:
+        send_batch_size: 1000
+        timeout: 5s
+
+    exporters:
+      debug:
+        verbosity: detailed
+
+      otlp/jaeger:
+        endpoint: "http://jaeger.observability.svc.cluster.local:4317"  # export traces to jaeger
+        tls:
+          insecure: true
+
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        enable_open_metrics: true
+        resource_to_telemetry_conversion:
+          enabled: true
+
+      loki:
+        endpoint: "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push"
+        tls:
+          insecure: true
+        sending_queue:
+          enabled: true
+
+    service:
+      pipelines:
+        # collect trace data using otlp receiver and send it to jaeger
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp/jaeger]
+        
+        # collect metrics from otlp and hostmetrics receiver and expose in prometheus compatible format
+        metrics:
+          receivers: [otlp, hostmetrics]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]
+
+        # collect logs using 'filelog' receiver and ship them to loki
+        logs:
+          receivers: [filelog]
+          processors: [memory_limiter, batch]
+          exporters: [loki]
