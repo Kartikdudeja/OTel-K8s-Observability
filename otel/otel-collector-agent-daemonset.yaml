@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector-agent
+  namespace: observability
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  # One pod at a time will be unavailable during update
+  selector:
+    matchLabels:
+      app: otel-collector-agent
+  template:
+    metadata:
+      labels:
+        app: otel-collector-agent
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:latest
+          args: ["--config=/conf/otel-collector-config.yaml"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 128Mi          
+          volumeMounts:
+            - name: config-volume
+              mountPath: /conf
+            - name: varlog
+              mountPath: /var/log
+      volumes:
+        - name: config-volume
+          configMap:
+            name: otel-collector-agent-config
+        - name: varlog
+          hostPath:
+            path: /var/log

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector-gateway
+  namespace: observability
+  labels:
+    app: otel-collector-gateway  
+spec:
+  replicas: 1
+
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%           # Allow 25% more pods than desired during update
+      maxUnavailable: 25%     # Allow 25% of desired pods to be unavailable during update
+
+  selector:
+    matchLabels:
+      app: otel-collector-gateway
+  template:
+    metadata:
+      labels:
+        app: otel-collector-gateway
+    spec:
+      serviceAccountName: otel-collector-gateway-sa
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:latest
+          args: ["--config=/conf/otel-collector-config.yaml"]
+          volumeMounts:
+            - name: config-volume
+              mountPath: /conf
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 128Mi
+      volumes:
+        - name: config-volume
+          configMap:
+            name: otel-collector-gateway-config
