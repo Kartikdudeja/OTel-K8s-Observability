@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: house-price-service
+  labels:
+    app: house-price-service
+
+spec:
+  replicas: 2
+
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%           # Allow 25% more pods than desired during update
+      maxUnavailable: 25%     # Allow 25% of desired pods to be unavailable during update
+
+  selector:
+    matchLabels:
+      app: house-price-service
+  template:
+    metadata:
+      labels:
+        app: house-price-service
+
+    spec:
+      containers:
+        - name: app
+          image: kartikd007/house-price-predictor:2.4
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "128Mi"
+            limits:
+              cpu: "20m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 8000   # Application Port
+            - containerPort: 4317   # OTLP gRPC Port
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector-agent.observability.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: house-price-service
+  labels:
+    app: house-price-service  
+spec:
+  selector:
+    app: house-price-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8000
+    - name: otlp-grpc
+      protocol: TCP
+      port: 4317
+      targetPort: 4317
+  type: ClusterIP
